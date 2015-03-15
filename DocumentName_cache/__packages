@@ -1,0 +1,13 @@
+base
+knitr
+data.table
+proto
+gsubfn
+DBI
+RSQLite
+sqldf
+dplyr
+xtable
+ggplot2
+lubridate
+lattice

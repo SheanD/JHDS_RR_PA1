@@ -10,52 +10,66 @@ INTRO:
   
   **Prepare workarea environmnet**  
   
- ```{r, echo=TRUE}
+ ```{r, setup, echo=TRUE}
 
+  library(knitr)
   #options(warn=-1)
 
+```
+
+ ```{r, alllibraries, echo=TRUE}
+
   if (!require("data.table")) {
-    install.packages("data.table")
+      install.packages("data.table", repos="http://cran.rstudio.com/")
+     library(data.table)
   }
-  require(data.table)
-  library(data.table)
+ 
 
   if (!require("sqldf")) {
-    install.packages("sqldf")
+    install.packages("sqldf", repos="http://cran.rstudio.com/")
+    library(sqldf)  
   }
-  require(sqldf)
-  library(sqldf)  
+  
   
   if (!require("dplyr")) {
-    install.packages("dplyr")
+    install.packages("dplyr", repos="http://cran.rstudio.com/")
+    library(dplyr)  
   }
-  require(dplyr)
-  library(dplyr)  
 
-  if (!require("ggplot2")) {
-    install.packages("ggplot2")
+  if (!require("xtable")) {
+    install.packages("xtable", repos="http://cran.rstudio.com/")
+    library(xtable)
   }
-  require(ggplot2)
-  library(ggplot2)
-  
+ 
+  if (!require("ggplot2")) {
+    install.packages("ggplot2", repos="http://cran.rstudio.com/")
+    library(ggplot2)
+  }
+
   if (!require("lubridate")) {
-    install.packages("lubridate")
+    install.packages("lubridate", repos="http://cran.rstudio.com/")
+    library(lubridate)  
   }  
-  require(lubridate)
-  library(lubridate)  
 
   if (!require("sqldf")) {
-    install.packages("sqldf")
+    install.packages("sqldf", repos="http://cran.rstudio.com/")
+    library(sqldf) 
   }  
-  require(sqldf)
-  library(sqldf) 
- 
+  
   if (!require("lattice")) {
-    install.packages("lattice")
+    install.packages("lattice", repos="http://cran.rstudio.com/")
+    library(lattice) 
   }  
+
   require(lattice)
-  library(lattice) 
- 
+  require(sqldf)
+  require(lubridate)
+  require(ggplot2)
+  require(xtable)
+  require(dplyr)
+  require(sqldf)
+  require(data.table)
+
 ```
 
   **Loading and preprocessing the data**  
@@ -124,7 +138,7 @@ INTRO:
 
   1. TOTAL number of steps taken per day
   
-```{r, echo=TRUE}
+```{r, ggplot2totnumstepsnonimputed, echo=TRUE}
   
   plot1 <- (steps_day)
   g <-   ggplot(steps_day, aes(x=Date, y=Steps)) + geom_bar(stat="identity") + 
@@ -134,7 +148,7 @@ INTRO:
 
   2. HISTOGRAM of the total number of steps taken per day
 
-```{r, echo=TRUE}
+```{r, simpleplotHistostepsdaysnonimputedecho=TRUE}
   plot1 <- (steps_day$Steps) 
   hist(plot1, breaks=12, main="Steps Each Day",xlab="Steps", col="red")
   rug(plot1,side=1)
@@ -144,12 +158,12 @@ INTRO:
   
   - Mean  
 ```{r, echo = TRUE}
-    print(mean(steps_day$Steps))
+  print(as.integer(mean(steps_day$Steps))+0.5)
 ````
 
   - Median  
 ```{r, echo = TRUE}
-    print(median(steps_day$Steps))
+    print(as.integer(median(steps_day$Steps))+0.5)
 ```
 
   **What is the average daily activity pattern?**  
@@ -165,7 +179,7 @@ INTRO:
 
   1. TIME series plot: Average Steps at Each Interval
 
-```{r, echo = TRUE}
+```{r, simpleplotintervalmeannonimputedecho = TRUE}
   x <- steps_interval_mean$Interval
   y <- steps_interval_mean$Steps_mean
   p <- plot(x, y, main = "Average Steps At Each Interval", type = "l", xlab = "(5-min. Intervals)", ylab = "(Average Steps)")
@@ -202,24 +216,22 @@ INTRO:
 
 ```{r, echo = TRUE}
   
-  idata <- sqldf(" SELECT data.date, data.date_time, data.interval, data.steps, steps_interval_mean.Steps_mean
-                   FROM data 
-                   LEFT OUTER JOIN steps_interval_mean 
-                   ON data.interval = steps_interval_mean.Interval
-                 ")
-  idata$Steps_mean <- as.integer(idata$Steps_mean+0.5)
-  
-  sqldf()
-      fn$sqldf("UPDATE idata SET steps = Steps_mean WHERE steps IS NULL")
-      idata <- sqldf("select * FROM main.idata")
-  sqldf()
-  idata$steps <- as.integer(idata$steps)
-  idata$date <- as.Date(idata$date)
+  setnames(steps_interval_mean, "Interval", "interval")
 
+  idata <- merge(x = data, y = steps_interval_mean, by = "interval", all.x=TRUE) 
+  
+  idata$Steps_mean <- as.integer(idata$Steps_mean+0.5)
+
+  idata <- 
+    idata %>%
+            mutate(steps=ifelse(is.na(steps)|steps == "NA", Steps_mean, steps))
+ 
+  idata <- idata %>% select(interval, steps, date, date_time, Steps_mean)
+
+  idata$steps <- as.integer(idata$steps)
 
 ```    
-  
-  - Transform data: Populate new table "isteps_day", aggregates date and sums steps  
+    - Transform data: Populate new table "isteps_day", aggregates date and sums steps  
      
 ```{r, echo = TRUE}
   isteps_day <- aggregate(idata$steps, by = list(idata$date), FUN=sum, na.rm=TRUE)
@@ -230,7 +242,7 @@ INTRO:
 
   4. HISTOGRAM of the total number of steps taken each day
 
-```{r, echo = TRUE}
+```{r, simpleplothistodaystepimputedecho = TRUE}
   x <- (isteps_day$Steps)
   hist(x, breaks=12, main="Imputed Steps Each Day",xlab="Imputed Steps", col="red")
   rug(x,side=1)
@@ -250,7 +262,7 @@ INTRO:
   
   - Do these values differ from the estimates from the non-imputed data?  
     
-```{r, echo = TRUE}
+```{r, multiplot, echo = TRUE}
   x <- isteps_day$Date
   y <- isteps_day$Steps
   xi <- steps_day$Date
@@ -305,37 +317,7 @@ INTRO:
   
   - Transform data: Populate new table "iDiff", aggregates intervals and sums steps  
       
-```{r, echo = TRUE}
-  idiff <- sqldf(" SELECT data.date, data.interval, data.steps, steps_interval_mean.Steps_mean
-                   FROM data 
-                   LEFT OUTER JOIN steps_interval_mean 
-                   ON data.interval = steps_interval_mean.Interval
-                 ")
-  idiff$Steps_mean <- as.integer(idiff$Steps_mean+0.5)
 
-  sqldf()
-  fn$sqldf("UPDATE idiff SET Steps_mean = 0 WHERE steps IS NOT NULL")
-  idiff <- sqldf("select * FROM main.idiff")
-  sqldf()
-```  
-  
-  - Transform data: Populate new table "idiff_day", aggregates Dates and sums steps for imputed and non-imputed data  
-```{r, echo = TRUE}
-  idiffday <- aggregate(idiff$Steps_mean, by = list(idiff$date), FUN=sum)  
-  idiffday <- data.table(idiffday)
-  setnames(idiffday, "Group.1", "Date")
-  setnames(idiffday, "x", "Steps") 
-  idiffday$Date <- as.Date(idiffday$Date)
-  
-```  
-  
-  - Graph Imputed Steps  
-
-```{r, echo = TRUE}
-  g <- ggplot(data=idiffday, mapping = aes(Date, Steps))
-  g <- g + layer(geom = "bar", stat = "identity")  
-  print(g)
-```
 
   **Differences in Activity Patterns Between Weekdays and Weekends**  
   
@@ -354,14 +336,13 @@ INTRO:
   setnames(isteps_interval_mean_wk, "Group.2", "Weekday")  
   isteps_interval_mean_wk$Steps_mean <- as.integer(isteps_interval_mean_wk$Steps_mean+0.5)
 ```
+ 2. Panel plot of the 5-minute interval and average number of steps taken, averaged across all weekday days or weekend days  
 
-  2. Panel plot of the 5-minute interval and average number of steps taken, averaged across all weekday days or weekend days  
-
-```{r, echo = TRUE}
-  xyplot(Steps_mean ~ Interval | Weekday, data = isteps_interval_mean_wk, type = "l" , layout = c(1,2))
+```{r, latticeistepsintervalmeanwk, echo = TRUE, fig.height=5}
+ xyplot(Steps_mean ~ Interval | Weekday, data = isteps_interval_mean_wk, type = "l" , layout = c(1,2), xlab="Time of day", ylab="Average steps", 
+              scales=list( Steps_mean=list(tick.number=5)),
+              main="Average steps taken per day"
+           )
 
 
 ```
-
-
-
