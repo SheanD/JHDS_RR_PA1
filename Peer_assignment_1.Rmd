@@ -13,7 +13,7 @@ INTRO:
  ```{r, setup, echo=TRUE}
 
   library(knitr)
-  #options(warn=-1)
+  options(warn=-1)
 
 ```
 
