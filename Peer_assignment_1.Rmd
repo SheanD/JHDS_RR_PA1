@@ -1,45 +1,20 @@
 ---
 title: "JHDS_RR_PA1"
-author: "Shean"
+author: "Shean Dalton"
 date: "Sunday, March 15, 2015"
 output: html_document
+  
 ---
 INTRO:
-  Learn about value of activity monitoring devices. Why would I want one, and I don't right now.
-  # Loading and preprocessign the data
+  Learn about value of activity monitoring devices. Why would I want one, and I don't right now.  
   
-  The following code used to download the file:
-   setwd("C:\Users\Shean\Documents\GitHub\JHDS_RR_PA1\JHDS_RR_PA1")
-   temp <- tempfile()
-  url <- "https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2Factivity.zip"
-  download.file(url,temp)
-  # unzip(temp, list=TRUE)
-   unzip(temp, files = NULL, list = FALSE, overwrite = TRUE,
-          junkpaths = FALSE, exdir = ".", unzip = "internal",
-          setTimes = FALSE)
+  **Prepare workarea environmnet**  
   
-  url <- "https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2Factivity.zip"  
-  file <- "activity.csv"
+ ```{r, echo=TRUE}
 
-  if (file.exists(file)==FALSE){
-  temp <- tempfile()
-  download.file(url, temp)
-  # unzip(temp, list=TRUE)
-  unzip(temp, files = NULL, list = FALSE, overwrite = TRUE,
-        junkpaths = FALSE, exdir = ".", unzip = "internal",
-        setTimes = FALSE)
-  }
-  unlink(temp)
+  #options(warn=-1)
 
-  rm(url)
-  rm(file)
-  rm(temp)
-  
-  
-```{r, echo=TRUE}
-
-  ## LOAD PACKAGES
-   if (!require("data.table")) {
+  if (!require("data.table")) {
     install.packages("data.table")
   }
   require(data.table)
@@ -74,49 +49,90 @@ INTRO:
   }  
   require(sqldf)
   library(sqldf) 
-
+ 
   if (!require("lattice")) {
     install.packages("lattice")
   }  
   require(lattice)
   library(lattice) 
  
+```
+
+  **Loading and preprocessing the data**  
+  1. LOAD the data Extract data from Internet  
+ ```{r, echo=TRUE}
+  setwd("C:/Users/Shean/Documents/GitHub/JHDS_RR_PA1/JHDS_RR_PA1")
+  temp <- tempfile()
+  url <- "https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2Factivity.zip"
+  file <- "activity.csv"
+
+  setInternet2(use = TRUE)
+
+  download.file(url, temp)
+  unzip(temp, files = NULL, list = FALSE, overwrite = TRUE,
+          junkpaths = FALSE, exdir = ".", unzip = "internal",
+          setTimes = FALSE)
+  
+  if (file.exists(file)==FALSE){
+    temp <- tempfile()
+    download.file(url, temp)
+    # unzip(temp, list=TRUE)
+    unzip(temp, files = NULL, list = FALSE, overwrite = TRUE,
+          junkpaths = FALSE, exdir = ".", unzip = "internal",
+          setTimes = FALSE)
+  }
+  unlink(temp)
+
+  rm(url)
+  rm(file)
+  rm(temp)
+  
   data <- read.csv("activity.csv", header = TRUE, na.strings = "na", stringsAsFactors=FALSE)
   data <- data.table(data)
+ ```
 
-  # glimpse(data)
-  # View(data)
-
+  2. PROCESS/Transform data: Add date_time column, add Steps interger column** 
+```{r, echo=TRUE}
   data$date_time <- sprintf("%04d", data$interval)
   data$date_time <- as.character(sub("(?<=.{2})", ":", data$date_time, perl=TRUE))
   data$date_time <- as.character(sub("(?<=.{5})", ":00", data$date_time, perl=TRUE))
   data$date_time <- paste(data$date, data$date_time, sep = " ")  
   data$date_time <- ymd_hms(data$date_time)
-
   data$steps_int <- as.numeric(data$steps)  
-
+````  
+  
+  - Transform data: Populate new table "data_no_NA" with no NA rows** 
+```{r, echo=TRUE}
   row_has_na <- apply(data, 1, function(x){any(is.na(x))})
   data_no_NA <- data[!row_has_na,]
-
-```
-
-#What is mean total number of steps taken per day?
-
+  data_no_NA$date <- as.Date(data_no_NA$date)
+```  
+  
+  - Transform data: Populate new table "steps_day", aggregates date and sums steps_in**
 ```{r, echo=TRUE}
-
+  
   steps_day <- aggregate(data_no_NA$steps_int, by = list(data_no_NA$date), FUN=sum, na.rm=TRUE)
   steps_day <- data.table(steps_day)
   setnames(steps_day, "Group.1", "Date")
   steps_day$Date <- as.Date(steps_day$Date)
   setnames(steps_day, "x", "Steps")
-  steps_day$Steps <- as.numeric(steps_day$Steps)  
-
-  plot1 <- (steps_day)
-
-  g <- ggplot(steps_day, aes(x=Date, y=x)) + geom_bar(stat="identity") +  labs(x="Day", y="Steps")
+  steps_day$Steps <- as.numeric(steps_day$Steps)
 
 ```
-# Histogram of the total number of steps taken each day
+
+  **What is mean total number of steps taken per day?**
+
+  1. TOTAL number of steps taken per day
+  
+```{r, echo=TRUE}
+  
+  plot1 <- (steps_day)
+  g <-   ggplot(steps_day, aes(x=Date, y=Steps)) + geom_bar(stat="identity") + 
+    labs(x="Day", y="Steps")
+  print(g)
+```
+
+  2. HISTOGRAM of the total number of steps taken per day
 
 ```{r, echo=TRUE}
   plot1 <- (steps_day$Steps) 
@@ -124,56 +140,68 @@ INTRO:
   rug(plot1,side=1)
 ```
 
-# Mean Steps per day over time period
+  3. MEAN and Median of the total number of steps taken per day  
+  
+  - Mean  
 ```{r, echo = TRUE}
     print(mean(steps_day$Steps))
 ````
 
-# Median Steps per day over time period
+  - Median  
 ```{r, echo = TRUE}
     print(median(steps_day$Steps))
-````
-  
-## What is the average daily activity pattern?
-### Time series plot
-```{r, echo = TRUE}
-    steps_interval <- aggregate(data_no_NA$steps_int, by = list(data_no_NA$date_time), FUN=sum, na.rm=TRUE)
-    steps_interval <- data.table(steps_interval)
-    setnames(steps_interval, "Group.1", "Dtm")
-    setnames(steps_interval, "x", "Steps_mean")
-  
-    x <- steps_interval$Dtm
-    y <- steps_interval$Steps_mean
-    p <- plot(x, y, main = "Average Steps At Each Interval", type = "l", xlab = "(5-min. Intervals)", ylab = "(Average Steps)")
+```
 
-````
-### Max interval across days monitored
-```{r, echo = TRUE}
-    interval_max_mean <- filter(steps_interval, steps_interval$Steps_mean == max(steps_interval$Steps_mean))
-    interval_max_mean <- data.table(interval_max_mean)
-    print(interval_max_mean)
+  **What is the average daily activity pattern?**  
 
-````
+  - Transform data: : Populate new table "steps_interval_mean", aggregates intervals and sums steps_in   
 
-## Imputing missing values
-
-### Total missing values
-```{r, echo = TRUE}
-  row_with_NA <- data[!row_has_na,]
-  print(nrow(row_with_NA))
-````
-
-### Strategy for filling in all of the missing values in the dataset
-### Convert NA's to interval mean (integers)
-
-### Create a new dataset that is equal to the original but with the missing data filed in
-```{r, echo = TRUE}
-  
+```{r, echo = TRUE}  
   steps_interval_mean <- aggregate(data_no_NA$steps_int, by = list(data_no_NA$interval), FUN=mean, na.rm=TRUE)
   steps_interval_mean <- data.table(steps_interval_mean)
   setnames(steps_interval_mean, "Group.1", "Interval")
   setnames(steps_interval_mean, "x", "Steps_mean")
- 
+```
+
+  1. TIME series plot: Average Steps at Each Interval
+
+```{r, echo = TRUE}
+  x <- steps_interval_mean$Interval
+  y <- steps_interval_mean$Steps_mean
+  p <- plot(x, y, main = "Average Steps At Each Interval", type = "l", xlab = "(5-min. Intervals)", ylab = "(Average Steps)")
+  print(p)
+```
+
+  2. INTERVAL on average with Max Steps, and Max Steps Count: measured from across days monitored  
+
+```{r, echo = TRUE}
+    interval_max_mean <- filter(steps_interval_mean, steps_interval_mean$Steps_mean == max(steps_interval_mean$Steps_mean))
+    interval_max_mean <- data.table(interval_max_mean)
+    print(interval_max_mean)
+```
+
+  **Imputing Missing Values**  
+  
+  - Transform Data: populate table "row_with_NA" that includes only rows that include NA values  
+
+```{r, echo = TRUE}
+  row_with_NA <- data[!row_has_na,]
+```
+
+  1. TOTAL Number of Data Entries with Missing Values  
+
+```{r, echo = TRUE}
+  print(nrow(row_with_NA))
+```
+
+  2. STRATEGY Convert NA Step values to their respective interval mean (integers)  
+
+  3. CREATE a new data set  
+  
+  - Transform: populate table "idata" that includes "data" table and "respective interval means"  
+
+```{r, echo = TRUE}
+  
   idata <- sqldf(" SELECT data.date, data.date_time, data.interval, data.steps, steps_interval_mean.Steps_mean
                    FROM data 
                    LEFT OUTER JOIN steps_interval_mean 
@@ -185,41 +213,60 @@ INTRO:
       fn$sqldf("UPDATE idata SET steps = Steps_mean WHERE steps IS NULL")
       idata <- sqldf("select * FROM main.idata")
   sqldf()
-
+  idata$steps <- as.integer(idata$steps)
   idata$date <- as.Date(idata$date)
-  isteps_day <- aggregate(idata$Steps_mean, by = list(idata$date), FUN=sum, na.rm=TRUE)
+
+
+```    
+  
+  - Transform data: Populate new table "isteps_day", aggregates date and sums steps  
+     
+```{r, echo = TRUE}
+  isteps_day <- aggregate(idata$steps, by = list(idata$date), FUN=sum, na.rm=TRUE)
   isteps_day <- data.table(isteps_day)
   setnames(isteps_day, "Group.1", "Date")
   setnames(isteps_day, "x", "Steps")
-  
-  isteps_day$Date <- as.Date(isteps_day$Date)
-````
-### Histogram of the total number of steps taken each day
+```
+
+  4. HISTOGRAM of the total number of steps taken each day
+
 ```{r, echo = TRUE}
-  plot1 <- (isteps_day$Steps)
+  x <- (isteps_day$Steps)
+  hist(x, breaks=12, main="Imputed Steps Each Day",xlab="Imputed Steps", col="red")
+  rug(x,side=1)
+```  
   
-  hist(plot1, breaks=12, main="Imputed Steps Each Day",xlab="Imputed Steps", col="red")
-  rug(plot1,side=1)
-````
-### Mean of total number of steps taken per day with NA estimated
+  - Calculate and report the mean steps per day of imputed data  
+
 ```{r, echo = TRUE}
   print(mean(isteps_day$Steps))
-````
-### Median of total number of steps taken per day with NA estimated
+```  
+  
+  - Calculate and report the median steps per day of imputed data  
+
 ```{r, echo = TRUE}
   print(median(isteps_day$Steps))
-````
-### Do the estimated NA results differ from excluded NA results?
+```  
+  
+  - Do these values differ from the estimates from the non-imputed data?  
+    
 ```{r, echo = TRUE}
-  plot(isteps_day$Date, isteps_day$Steps, type="n", xlab="Date", ylab="Steps", cex.lab=".75", main = "Imputed Overlay to Non Imputed Steps Per Interval")
-  points(isteps_day$Date, isteps_day$Steps, type="l", col="red")
-  points(steps_day$Date, steps_day$Steps, type="l", col="blue")
+  x <- isteps_day$Date
+  y <- isteps_day$Steps
+  xi <- steps_day$Date
+  yi <- steps_day$Steps
+  plot(xi, yi, type="n", xlab="Date", ylab="Steps", cex.lab=".75", main = "Imputed Overlay to Non Imputed Steps Per Interval")
+  points(x, y, type="l", col="red")
+  points(xi, yi, type="l", col="blue")
   legend("topleft",legend = c("Imputed Steps", "Non Imputed Steps"), col = c("red", "blue"), lwd = .75, cex = .65, bty="n")
+```  
+  
+  - Impact of imputing missign data on the estimates of the total daily number of steps  
+  
+  - Mean for interval did not change: comparing interval non-imputed means to imputed means  
+  
+  - Transform data: Populate new table "isteps_interval_mean", aggregates intervals and sums steps
 
-````
-## What is the impact of imputing missing data on the estimates of the total daily number of steps?
-### Max interval did not change
-### Because whole days appeared absent (NA) and with the original assumption was to exclude NA versus consider them 0, the mean and max did not change with the strategy taken to add them back in based on mean per interval for the populated days.
 ```{r, echo = TRUE}
   isteps_interval_mean <- aggregate(idata$steps, by = list(idata$interval), FUN=mean, na.rm=TRUE)
   isteps_interval_mean <- data.table(isteps_interval_mean)
@@ -227,41 +274,94 @@ INTRO:
   setnames(isteps_interval_mean, "x", "Steps_mean")
   i_interval_max_mean <- filter(isteps_interval_mean, isteps_interval_mean$Steps_mean == max(isteps_interval_mean$Steps_mean))
   i_interval_max_mean <- data.table(i_interval_max_mean)
+```  
+  
+  - Imputed MAX mean for intervals and days 
+```{r, echo = TRUE}
   print(i_interval_max_mean)
 
-  idiff_day <- aggregate(idiff$Steps_mean, by = list(idiff$date), FUN=sum)  
-  idiff_day <- data.table(idiff_day)
-  setnames(idiff_day, "Group.1", "Date")
-  setnames(idiff_day, "x", "Steps")
-  idiff_day$Date <- as.Date(idiff_day$Date)
-  g <- ggplot(data=idiff_day, aes(x=Date, y=Steps, fill=Steps))
-  p <- g + geom_bar(stat='identity', Fill = "red")  
-  p <- p + labs(y="Steps", title = "Imputed Steps Added In Per Day")
-  print(p) 
-````
-
-## Are there differences in activity patterns between weekdays and weekends?
+```  
+  
+  
+  - NON-Imputed MAX mean for intervals and days 
+  
 ```{r, echo = TRUE}
-  idata$date_time <- sprintf("%04d", idata$interval)
-  idata$date_time <- as.character(sub("(?<=.{2})", ":", idata$date_time, perl=TRUE))
-  idata$date_time <- as.character(sub("(?<=.{5})", ":00", idata$date_time, perl=TRUE))
-  idata$date_time <- paste(idata$date, idata$date_time, sep = " ")  
-  idata$date_time <- ymd_hms(idata$date_time)
-  idata$date <- as.Date(idata$date)
+  print(interval_max_mean)
+``` 
+  
+  - Mean for days did change: comparing interval non-imputed means to imputed means   
+  - Imputed mean for days  
+      
+```{r, echo = TRUE}
+  print(mean(isteps_day$Steps))
+``` 
   
   
+  - NON-Imputed mean for days  
+      
+```{r, echo = TRUE}
+  print(mean(steps_day$Steps))
+```  
   
+  - Transform data: Populate new table "iDiff", aggregates intervals and sums steps  
+      
+```{r, echo = TRUE}
+  idiff <- sqldf(" SELECT data.date, data.interval, data.steps, steps_interval_mean.Steps_mean
+                   FROM data 
+                   LEFT OUTER JOIN steps_interval_mean 
+                   ON data.interval = steps_interval_mean.Interval
+                 ")
+  idiff$Steps_mean <- as.integer(idiff$Steps_mean+0.5)
+
+  sqldf()
+  fn$sqldf("UPDATE idiff SET Steps_mean = 0 WHERE steps IS NOT NULL")
+  idiff <- sqldf("select * FROM main.idiff")
+  sqldf()
+```  
+  
+  - Transform data: Populate new table "idiff_day", aggregates Dates and sums steps for imputed and non-imputed data  
+```{r, echo = TRUE}
+  idiffday <- aggregate(idiff$Steps_mean, by = list(idiff$date), FUN=sum)  
+  idiffday <- data.table(idiffday)
+  setnames(idiffday, "Group.1", "Date")
+  setnames(idiffday, "x", "Steps") 
+  idiffday$Date <- as.Date(idiffday$Date)
+  
+```  
+  
+  - Graph Imputed Steps  
+
+```{r, echo = TRUE}
+  g <- ggplot(data=idiffday, mapping = aes(Date, Steps))
+  g <- g + layer(geom = "bar", stat = "identity")  
+  print(g)
+```
+
+  **Differences in Activity Patterns Between Weekdays and Weekends**  
+  
+  1. Transform data: add column "wend" to imputed data table "idata"  
+    
+```{r, echo = TRUE}
   idata$wend <- as.factor(ifelse(weekdays( idata$date_time) %in% c("Saturday","Sunday"), "Weekend", "Weekday"))
+```  
+  
+  - Transform data: populate table "isteps_interval_mean_wk$Steps_mean"  
+    
+```{r, echo = TRUE}
   isteps_interval_mean_wk <- aggregate(idata$steps, by = list(idata$interval, idata$wend), FUN=mean, na.rm=TRUE)
   setnames(isteps_interval_mean_wk, "Group.1", "Interval")
   setnames(isteps_interval_mean_wk, "x", "Steps_mean")
-  setnames(isteps_interval_mean_wk, "Group.2", "Weekday")
-  
+  setnames(isteps_interval_mean_wk, "Group.2", "Weekday")  
   isteps_interval_mean_wk$Steps_mean <- as.integer(isteps_interval_mean_wk$Steps_mean+0.5)
-  
-  g <- xyplot(Steps_mean ~ Interval | Weekday, data = isteps_interval_mean_wk, type = "l" , xlab="Time of day", ylab="Average steps", 
-              scales=list( Steps_mean=list(tick.number=5) ),layout = c(1,2),
-              main="Average steps taken per day"
-  )
-  print(g)
-````
+```
+
+  2. Panel plot of the 5-minute interval and average number of steps taken, averaged across all weekday days or weekend days  
+
+```{r, echo = TRUE}
+  xyplot(Steps_mean ~ Interval | Weekday, data = isteps_interval_mean_wk, type = "l" , layout = c(1,2))
+
+
+```
+
+
+
