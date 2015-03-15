@@ -138,7 +138,7 @@ INTRO:
 
   1. TOTAL number of steps taken per day
   
-```{r, ggplot2totnumstepsnonimputed, echo=TRUE}
+```{r, ggplot2_total_number_of_steps_taken_per_day, echo=TRUE, fig.path='figure/'}
   
   plot1 <- (steps_day)
   g <-   ggplot(steps_day, aes(x=Date, y=Steps)) + geom_bar(stat="identity") + 
@@ -148,7 +148,7 @@ INTRO:
 
   2. HISTOGRAM of the total number of steps taken per day
 
-```{r, simpleplotHistostepsdaysnonimputedecho=TRUE}
+```{r, Histogram_total_number_of_steps_taken_per_day, echo=TRUE, fig.path='figure/'}
   plot1 <- (steps_day$Steps) 
   hist(plot1, breaks=12, main="Steps Each Day",xlab="Steps", col="red")
   rug(plot1,side=1)
@@ -179,7 +179,7 @@ INTRO:
 
   1. TIME series plot: Average Steps at Each Interval
 
-```{r, simpleplotintervalmeannonimputedecho = TRUE}
+```{r, plot_average_steps_at_each_interval, echo = TRUE, fig.path='figure/'}
   x <- steps_interval_mean$Interval
   y <- steps_interval_mean$Steps_mean
   p <- plot(x, y, main = "Average Steps At Each Interval", type = "l", xlab = "(5-min. Intervals)", ylab = "(Average Steps)")
@@ -242,7 +242,7 @@ INTRO:
 
   4. HISTOGRAM of the total number of steps taken each day
 
-```{r, simpleplothistodaystepimputedecho = TRUE}
+```{r, Histogram_total_number_of_steps_taken_per_day_imputed_data, echo = TRUE, fig.path='figure/'}
   x <- (isteps_day$Steps)
   hist(x, breaks=12, main="Imputed Steps Each Day",xlab="Imputed Steps", col="red")
   rug(x,side=1)
@@ -262,7 +262,7 @@ INTRO:
   
   - Do these values differ from the estimates from the non-imputed data?  
     
-```{r, multiplot, echo = TRUE}
+```{r, plot_comparing_imputed_to_nonimputed_data, echo = TRUE, fig.path='figure/'}
   x <- isteps_day$Date
   y <- isteps_day$Steps
   xi <- steps_day$Date
@@ -338,11 +338,11 @@ INTRO:
 ```
  2. Panel plot of the 5-minute interval and average number of steps taken, averaged across all weekday days or weekend days  
 
-```{r, latticeistepsintervalmeanwk, echo = TRUE, fig.height=5}
- xyplot(Steps_mean ~ Interval | Weekday, data = isteps_interval_mean_wk, type = "l" , layout = c(1,2), xlab="Time of day", ylab="Average steps", 
+```{r, panelplot_weekend_weekday, echo = TRUE, fig.path='figure/'}
+  g <- xyplot(Steps_mean ~ Interval | Weekday, data = isteps_interval_mean_wk, type = "l" , layout = c(1,2), xlab="Time of day", ylab="Average steps", 
               scales=list( Steps_mean=list(tick.number=5)),
               main="Average steps taken per day"
            )
-
+  print(g)
 
 ```
