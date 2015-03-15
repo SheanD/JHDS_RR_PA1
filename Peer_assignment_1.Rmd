@@ -339,10 +339,10 @@ INTRO:
  2. Panel plot of the 5-minute interval and average number of steps taken, averaged across all weekday days or weekend days  
 
 ```{r, latticeistepsintervalmeanwk, echo = TRUE, fig.height=5}
- xyplot(Steps_mean ~ Interval | Weekday, data = isteps_interval_mean_wk, type = "l" , layout = c(1,2), xlab="Time of day", ylab="Average steps", 
+  g <- xyplot(Steps_mean ~ Interval | Weekday, data = isteps_interval_mean_wk, type = "l" , layout = c(1,2), xlab="Time of day", ylab="Average steps", 
               scales=list( Steps_mean=list(tick.number=5)),
               main="Average steps taken per day"
            )
-
+  print(g)
 
 ```
